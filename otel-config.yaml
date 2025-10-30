@@ -1,0 +1,15 @@
+receivers:  
+  prometheus_node_exporter:
+    scrape_interval: 5s
+    exporter_config: {}
+
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    metrics:
+      receivers: [prometheus_node_exporter]
+      exporters: [debug]

@@ -1,0 +1,19 @@
+# Prometheus OpenTelemetry Collector distributions
+dist:
+  name: prometheus-opentelemetry-collector
+  description: Prometheus OpenTelemetry Collector distribution.
+  output_path: ./dist
+  version: 0.1.0
+  module: github.com/ArthurSens/prometheus-opentelemetry-collector
+  otelcol_version: 0.138.0
+
+exporters:
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.138.0
+
+receivers:
+  - gomod: github.com/prometheus/node_exporter/otelcollector v0.1.0
+
+replaces:
+  - github.com/prometheus/exporter-toolkit => ../../exporter-toolkit
+  - github.com/prometheus/node_exporter/otelcollector => ../../node_exporter/otelcollector
+  - github.com/prometheus/node_exporter => ../../node_exporter
