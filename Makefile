@@ -1,6 +1,6 @@
 .PHONY: generate build check clean
 
-OCB_VERSION ?= v0.149.0
+OCB_VERSION ?= v0.151.0
 MANIFEST := builder-config.yaml
 BUILD_DIR := _build
 BUILDER_BIN := $(CURDIR)/.bin/builder
