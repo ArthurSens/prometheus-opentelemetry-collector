@@ -12,6 +12,7 @@ This repository is intentionally small. Its job is to define a curated collector
 ## Repository layout
 
 - `builder-config.yaml`: the single source of truth for the distribution
+- `receivers/`: locally maintained integrations of Prometheus exporters as collector receivers
 - `Makefile`: local entrypoints for generation, compile checks, and cleanup
 - `.github/workflows/build.yaml`: CI that regenerates the collector and compiles the generated Go module
 

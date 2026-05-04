@@ -9,7 +9,7 @@ receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.151.0
-  - gomod: github.com/prometheus-community/stackdriver_exporter/otelcollector v0.0.0-20260402175134-d4212ffb638d
+  - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver v0.0.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.151.0
@@ -37,4 +37,4 @@ telemetry:
   import: go.opentelemetry.io/collector/service/telemetry/otelconftelemetry
 
 replaces:
-  - github.com/prometheus-community/stackdriver_exporter => github.com/prometheus-community/stackdriver_exporter v0.18.1-0.20260402175134-d4212ffb638d
+  - github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver => ../receivers/stackdriver
