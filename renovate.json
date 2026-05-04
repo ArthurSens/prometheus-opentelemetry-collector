@@ -6,6 +6,7 @@
   "enabledManagers": [
     "custom.regex"
   ],
+  "dependencyDashboard": true,
   "prHourlyLimit": 1,
   "prConcurrentLimit": 3,
   "schedule": [
