@@ -15,6 +15,7 @@ This repository is intentionally small. Its job is to define a curated collector
 - `receivers/`: locally maintained integrations of Prometheus exporters as collector receivers
 - `Makefile`: local entrypoints for generation, compile checks, and cleanup
 - `.github/workflows/build.yaml`: CI that regenerates the collector and compiles the generated Go module
+- `.github/workflows/test.yaml`: CI that tests local receiver modules
 
 Generated sources and binaries live in `_build/` and are not committed.
 
@@ -22,6 +23,7 @@ Generated sources and binaries live in `_build/` and are not committed.
 
 ```bash
 make generate
+make test
 make build
 make check
 make clean
@@ -30,6 +32,7 @@ make clean
 Command behavior:
 
 - `make generate`: install OCB and generate collector sources into `_build/`
+- `make test`: run tests for local receiver modules
 - `make build`: run OCB end-to-end and produce the `prometheus-otelcol` binary
 - `make check`: regenerate sources, then run `go build ./...` inside `_build/`
 - `make clean`: remove generated artifacts and the local OCB binary
@@ -37,4 +40,5 @@ Command behavior:
 ## Adding components or bumping versions safely
 
 1. Edit `builder-config.yaml`.
-2. Run `make check` to regenerate the collector and compile the generated module.
+2. Run `make test` to test local modules.
+3. Run `make check` to regenerate the collector and compile the generated module.
