@@ -15,161 +15,115 @@ package otelcollector
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
+	"strings"
 	"time"
+	"unicode"
 
-	"github.com/prometheus-community/stackdriver_exporter/config"
+	"github.com/mitchellh/mapstructure"
+	"github.com/prometheus-community/stackdriver_exporter/collectors"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
 )
 
-// Config maps stackdriver_exporter runtime settings into exporter_config.
-type Config struct {
-	ProjectIDs           []string `mapstructure:"project_ids"`
-	ProjectsFilter       string   `mapstructure:"projects_filter"`
-	UniverseDomain       string   `mapstructure:"universe_domain"`
-	MaxRetries           int      `mapstructure:"max_retries"`
-	HTTPTimeout          string   `mapstructure:"http_timeout"`
-	MaxBackoff           string   `mapstructure:"max_backoff"`
-	BackoffJitter        string   `mapstructure:"backoff_jitter"`
-	RetryStatuses        []int    `mapstructure:"retry_statuses"`
-	MetricsPrefixes      []string `mapstructure:"metrics_prefixes"`
-	MetricsInterval      string   `mapstructure:"metrics_interval"`
-	MetricsOffset        string   `mapstructure:"metrics_offset"`
-	MetricsIngest        bool     `mapstructure:"metrics_ingest_delay"`
-	FillMissing          bool     `mapstructure:"fill_missing_labels"`
-	DropDelegated        bool     `mapstructure:"drop_delegated_projects"`
-	Filters              []string `mapstructure:"filters"`
-	AggregateDeltas      bool     `mapstructure:"aggregate_deltas"`
-	DeltasTTL            string   `mapstructure:"aggregate_deltas_ttl"`
-	DescriptorTTL        string   `mapstructure:"descriptor_cache_ttl"`
-	DescriptorGoogleOnly bool     `mapstructure:"descriptor_cache_only_google"`
+var _ prombridge.ConfigDecoder = configDecoder{}
+
+type configDecoder struct{}
+
+func (configDecoder) DecodeConfig(raw map[string]interface{}) (any, error) {
+	cfg := defaultConfig()
+	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:     cfg,
+		DecodeHook: mapstructure.StringToTimeDurationHookFunc(),
+		MatchName: func(yamlKey, goField string) bool {
+			return strings.EqualFold(strings.ReplaceAll(yamlKey, "_", ""), goField)
+		},
+		ErrorUnused: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := dec.Decode(raw); err != nil {
+		return nil, fmt.Errorf("decode receiver config: %w", err)
+	}
+	return cfg, nil
 }
 
-var _ prombridge.Config = (*Config)(nil)
-
-func defaultConfig() *Config {
-	return &Config{
-		UniverseDomain:       config.DefaultUniverseDomain,
-		MaxRetries:           config.DefaultMaxRetries,
-		HTTPTimeout:          config.DefaultHTTPTimeout,
-		MaxBackoff:           config.DefaultMaxBackoff,
-		BackoffJitter:        config.DefaultBackoffJitter,
-		RetryStatuses:        slices.Clone(config.DefaultRetryStatuses),
-		MetricsInterval:      config.DefaultMetricsInterval,
-		MetricsOffset:        config.DefaultMetricsOffset,
-		MetricsIngest:        config.DefaultMetricsIngest,
-		FillMissing:          config.DefaultFillMissing,
-		DropDelegated:        config.DefaultDropDelegated,
-		AggregateDeltas:      config.DefaultAggregateDeltas,
-		DeltasTTL:            config.DefaultDeltasTTL,
-		DescriptorTTL:        config.DefaultDescriptorTTL,
-		DescriptorGoogleOnly: config.DefaultDescriptorGoogleOnly,
+func defaultConfig() *collectors.Config {
+	return &collectors.Config{
+		UniverseDomain:            collectors.DefaultUniverseDomain,
+		MaxRetries:                collectors.DefaultMaxRetries,
+		HTTPTimeout:               collectors.DefaultHTTPTimeout,
+		MaxBackoff:                collectors.DefaultMaxBackoff,
+		BackoffJitter:             collectors.DefaultBackoffJitter,
+		RetryStatuses:             slices.Clone(collectors.DefaultRetryStatuses),
+		MetricsInterval:           collectors.DefaultMetricsInterval,
+		MetricsOffset:             collectors.DefaultMetricsOffset,
+		MetricsIngestDelay:        collectors.DefaultMetricsIngest,
+		FillMissingLabels:         collectors.DefaultFillMissing,
+		DropDelegatedProjects:     collectors.DefaultDropDelegated,
+		AggregateDeltas:           collectors.DefaultAggregateDeltas,
+		AggregateDeltasTTL:        collectors.DefaultDeltasTTL,
+		DescriptorCacheTTL:        collectors.DefaultDescriptorTTL,
+		DescriptorCacheOnlyGoogle: collectors.DefaultDescriptorGoogleOnly,
 	}
 }
 
-func defaultComponentDefaults() map[string]interface{} {
-	return config.OTelComponentDefaults()
+// componentDefaults generates the OTel-framework defaults map by walking the typed
+// default Config. time.Duration fields are emitted as their .String() form to match
+// the YAML representation; everything else passes through.
+func componentDefaults() map[string]interface{} {
+	out := map[string]interface{}{}
+	rv := reflect.ValueOf(defaultConfig()).Elem()
+	rt := rv.Type()
+	for i := range rt.NumField() {
+		key := snakeCase(rt.Field(i).Name)
+		v := rv.Field(i).Interface()
+		if d, ok := v.(time.Duration); ok {
+			out[key] = d.String()
+			continue
+		}
+		out[key] = v
+	}
+	return out
 }
 
-func (c *Config) Validate() error {
-	if len(c.MetricsPrefixes) == 0 {
-		return fmt.Errorf("metrics_prefixes must have at least one entry")
+// snakeCase converts a PascalCase or camelCase Go identifier to snake_case,
+// handling acronyms (HTTPTimeout → http_timeout, ProjectIDs → project_ids,
+// AggregateDeltasTTL → aggregate_deltas_ttl).
+func snakeCase(name string) string {
+	runes := []rune(name)
+	var out []rune
+	for i, r := range runes {
+		if i == 0 {
+			out = append(out, unicode.ToLower(r))
+			continue
+		}
+		prev := runes[i-1]
+		if unicode.IsUpper(r) {
+			if unicode.IsLower(prev) || unicode.IsDigit(prev) {
+				// lowercase→uppercase boundary: always split.
+				out = append(out, '_')
+			} else if unicode.IsUpper(prev) {
+				// Within an uppercase run: split before this letter only if the
+				// run has 3+ uppercase letters (i.e., two-back is also uppercase).
+				// This splits "HTTP"+"Timeout" but keeps "ID"+"s" together.
+				next := rune(0)
+				if i+1 < len(runes) {
+					next = runes[i+1]
+				}
+				if next != 0 && unicode.IsLower(next) {
+					prevPrev := rune(0)
+					if i >= 2 {
+						prevPrev = runes[i-2]
+					}
+					if unicode.IsUpper(prevPrev) {
+						out = append(out, '_')
+					}
+				}
+			}
+		}
+		out = append(out, unicode.ToLower(r))
 	}
-
-	_, err := c.parsedDurations()
-	if err != nil {
-		return err
-	}
-
-	if err := config.ValidateRetryStatuses(c.RetryStatuses); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type parsedConfig struct {
-	HTTPTimeout     time.Duration
-	MaxBackoff      time.Duration
-	BackoffJitter   time.Duration
-	MetricsInterval time.Duration
-	MetricsOffset   time.Duration
-	DeltasTTL       time.Duration
-	DescriptorTTL   time.Duration
-}
-
-func (c *Config) parsedDurations() (parsedConfig, error) {
-	httpTimeout, err := config.ParseDuration("http_timeout", c.HTTPTimeout)
-	if err != nil {
-		return parsedConfig{}, err
-	}
-	maxBackoff, err := config.ParseDuration("max_backoff", c.MaxBackoff)
-	if err != nil {
-		return parsedConfig{}, err
-	}
-	backoffJitter, err := config.ParseDuration("backoff_jitter", c.BackoffJitter)
-	if err != nil {
-		return parsedConfig{}, err
-	}
-	metricsInterval, err := config.ParseDuration("metrics_interval", c.MetricsInterval)
-	if err != nil {
-		return parsedConfig{}, err
-	}
-	metricsOffset, err := config.ParseDuration("metrics_offset", c.MetricsOffset)
-	if err != nil {
-		return parsedConfig{}, err
-	}
-	deltasTTL, err := config.ParseDuration("aggregate_deltas_ttl", c.DeltasTTL)
-	if err != nil {
-		return parsedConfig{}, err
-	}
-	descriptorTTL, err := config.ParseDuration("descriptor_cache_ttl", c.DescriptorTTL)
-	if err != nil {
-		return parsedConfig{}, err
-	}
-
-	return parsedConfig{
-		HTTPTimeout:     httpTimeout,
-		MaxBackoff:      maxBackoff,
-		BackoffJitter:   backoffJitter,
-		MetricsInterval: metricsInterval,
-		MetricsOffset:   metricsOffset,
-		DeltasTTL:       deltasTTL,
-		DescriptorTTL:   descriptorTTL,
-	}, nil
-}
-
-func (c *Config) runtimeConfig() (config.RuntimeConfig, error) {
-	parsed, err := c.parsedDurations()
-	if err != nil {
-		return config.RuntimeConfig{}, err
-	}
-
-	return config.RuntimeConfig{
-		ProjectIDs:           slices.Clone(c.ProjectIDs),
-		ProjectsFilter:       c.ProjectsFilter,
-		UniverseDomain:       c.UniverseDomain,
-		MaxRetries:           c.MaxRetries,
-		HTTPTimeout:          parsed.HTTPTimeout,
-		MaxBackoff:           parsed.MaxBackoff,
-		BackoffJitter:        parsed.BackoffJitter,
-		RetryStatuses:        slices.Clone(c.RetryStatuses),
-		MetricsPrefixes:      slices.Clone(c.MetricsPrefixes),
-		MetricsInterval:      parsed.MetricsInterval,
-		MetricsOffset:        parsed.MetricsOffset,
-		MetricsIngest:        c.MetricsIngest,
-		FillMissing:          c.FillMissing,
-		DropDelegated:        c.DropDelegated,
-		Filters:              slices.Clone(c.Filters),
-		AggregateDeltas:      c.AggregateDeltas,
-		DeltasTTL:            parsed.DeltasTTL,
-		DescriptorTTL:        parsed.DescriptorTTL,
-		DescriptorGoogleOnly: c.DescriptorGoogleOnly,
-	}, nil
-}
-
-type configUnmarshaler struct{}
-
-func (configUnmarshaler) GetConfigStruct() prombridge.Config {
-	return defaultConfig()
+	return string(out)
 }
