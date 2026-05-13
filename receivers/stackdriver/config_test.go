@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus-community/stackdriver_exporter/collectors"
+	"github.com/prometheus-community/stackdriver_exporter/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -114,7 +114,7 @@ func TestDecodeConfig_FullRoundTrip(t *testing.T) {
 		t.Fatalf("DecodeConfig() error = %v", err)
 	}
 
-	cfg, ok := result.(*collectors.Config)
+	cfg, ok := result.(*config.Config)
 	if !ok {
 		t.Fatalf("DecodeConfig() returned unexpected type %T", result)
 	}
@@ -191,15 +191,15 @@ func TestDecodeConfig_DurationStringOverridesDefault(t *testing.T) {
 		t.Fatalf("DecodeConfig() error = %v", err)
 	}
 
-	cfg := result.(*collectors.Config)
+	cfg := result.(*config.Config)
 	if cfg.HTTPTimeout != 45*time.Second {
 		t.Fatalf("HTTPTimeout = %v, want 45s", cfg.HTTPTimeout)
 	}
-	if cfg.FillMissingLabels != collectors.DefaultFillMissing {
-		t.Fatalf("FillMissingLabels = %v, want default %v", cfg.FillMissingLabels, collectors.DefaultFillMissing)
+	if cfg.FillMissingLabels != config.DefaultFillMissing {
+		t.Fatalf("FillMissingLabels = %v, want default %v", cfg.FillMissingLabels, config.DefaultFillMissing)
 	}
-	if cfg.MaxBackoff != collectors.DefaultMaxBackoff {
-		t.Fatalf("MaxBackoff = %v, want default %v", cfg.MaxBackoff, collectors.DefaultMaxBackoff)
+	if cfg.MaxBackoff != config.DefaultMaxBackoff {
+		t.Fatalf("MaxBackoff = %v, want default %v", cfg.MaxBackoff, config.DefaultMaxBackoff)
 	}
 }
 

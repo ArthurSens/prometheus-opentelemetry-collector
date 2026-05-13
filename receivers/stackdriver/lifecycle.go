@@ -20,6 +20,7 @@ import (
 	"log/slog"
 
 	"github.com/prometheus-community/stackdriver_exporter/collectors"
+	"github.com/prometheus-community/stackdriver_exporter/config"
 	"github.com/prometheus-community/stackdriver_exporter/delta"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
@@ -38,9 +39,9 @@ func newLifecycleManager() *lifecycleManager {
 }
 
 func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
-	cfg, ok := exporterCfg.(*collectors.Config)
+	cfg, ok := exporterCfg.(*config.Config)
 	if !ok {
-		return nil, fmt.Errorf("expected *collectors.Config, got %T", exporterCfg)
+		return nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
 	}
 
 	logger := m.loggerFromSettings(set)

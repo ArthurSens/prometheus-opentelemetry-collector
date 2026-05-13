@@ -22,7 +22,7 @@ import (
 	"unicode"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/prometheus-community/stackdriver_exporter/collectors"
+	"github.com/prometheus-community/stackdriver_exporter/config"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
 )
 
@@ -49,23 +49,23 @@ func (configDecoder) DecodeConfig(raw map[string]interface{}) (any, error) {
 	return cfg, nil
 }
 
-func defaultConfig() *collectors.Config {
-	return &collectors.Config{
-		UniverseDomain:            collectors.DefaultUniverseDomain,
-		MaxRetries:                collectors.DefaultMaxRetries,
-		HTTPTimeout:               collectors.DefaultHTTPTimeout,
-		MaxBackoff:                collectors.DefaultMaxBackoff,
-		BackoffJitter:             collectors.DefaultBackoffJitter,
-		RetryStatuses:             slices.Clone(collectors.DefaultRetryStatuses),
-		MetricsInterval:           collectors.DefaultMetricsInterval,
-		MetricsOffset:             collectors.DefaultMetricsOffset,
-		MetricsIngestDelay:        collectors.DefaultMetricsIngest,
-		FillMissingLabels:         collectors.DefaultFillMissing,
-		DropDelegatedProjects:     collectors.DefaultDropDelegated,
-		AggregateDeltas:           collectors.DefaultAggregateDeltas,
-		AggregateDeltasTTL:        collectors.DefaultDeltasTTL,
-		DescriptorCacheTTL:        collectors.DefaultDescriptorTTL,
-		DescriptorCacheOnlyGoogle: collectors.DefaultDescriptorGoogleOnly,
+func defaultConfig() *config.Config {
+	return &config.Config{
+		UniverseDomain:            config.DefaultUniverseDomain,
+		MaxRetries:                config.DefaultMaxRetries,
+		HTTPTimeout:               config.DefaultHTTPTimeout,
+		MaxBackoff:                config.DefaultMaxBackoff,
+		BackoffJitter:             config.DefaultBackoffJitter,
+		RetryStatuses:             slices.Clone(config.DefaultRetryStatuses),
+		MetricsInterval:           config.DefaultMetricsInterval,
+		MetricsOffset:             config.DefaultMetricsOffset,
+		MetricsIngestDelay:        config.DefaultMetricsIngest,
+		FillMissingLabels:         config.DefaultFillMissing,
+		DropDelegatedProjects:     config.DefaultDropDelegated,
+		AggregateDeltas:           config.DefaultAggregateDeltas,
+		AggregateDeltasTTL:        config.DefaultDeltasTTL,
+		DescriptorCacheTTL:        config.DefaultDescriptorTTL,
+		DescriptorCacheOnlyGoogle: config.DefaultDescriptorGoogleOnly,
 	}
 }
 
@@ -77,7 +77,11 @@ func componentDefaults() map[string]interface{} {
 	rv := reflect.ValueOf(defaultConfig()).Elem()
 	rt := rv.Type()
 	for i := range rt.NumField() {
-		key := snakeCase(rt.Field(i).Name)
+		f := rt.Field(i)
+		if !f.IsExported() {
+			continue
+		}
+		key := snakeCase(f.Name)
 		v := rv.Field(i).Interface()
 		if d, ok := v.(time.Duration); ok {
 			out[key] = d.String()
