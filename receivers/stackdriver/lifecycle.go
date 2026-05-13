@@ -30,11 +30,11 @@ import (
 var _ prombridge.ExporterLifecycleManager = (*lifecycleManager)(nil)
 
 type lifecycleManager struct {
-	loggerForSettings func(set receiver.Settings) *slog.Logger
+	loggerFromSettings func(set receiver.Settings) *slog.Logger
 }
 
 func newLifecycleManager() *lifecycleManager {
-	return &lifecycleManager{loggerForSettings: collectorSlogLogger}
+	return &lifecycleManager{loggerFromSettings: collectorSlogLogger}
 }
 
 func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
@@ -43,7 +43,7 @@ func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exp
 		return nil, fmt.Errorf("expected *collectors.Config, got %T", exporterCfg)
 	}
 
-	logger := m.loggerForSettings(set)
+	logger := m.loggerFromSettings(set)
 	runtime, err := collectors.NewRuntime(ctx, logger, cfg, delta.NewInMemoryCounterStore, delta.NewInMemoryHistogramStore)
 	if err != nil {
 		return nil, fmt.Errorf("start stackdriver runtime: %w", err)
