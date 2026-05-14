@@ -22,23 +22,16 @@ Generated sources and binaries live in `_build/` and are not committed.
 ## Local development
 
 ```bash
-make generate
-make test
-make build
-make check
-make clean
+make gogenerate       # update generated receiver metadata
+make check-metadata   # verify generated metadata is fresh
+make test             # test local receiver modules
+make check            # generate and compile the collector distribution
+make build            # build the collector binary
+make clean            # remove generated artifacts
 ```
-
-Command behavior:
-
-- `make generate`: install OCB and generate collector sources into `_build/`
-- `make test`: run tests for local receiver modules
-- `make build`: run OCB end-to-end and produce the `prometheus-otelcol` binary
-- `make check`: regenerate sources, then run `go build ./...` inside `_build/`
-- `make clean`: remove generated artifacts and the local OCB binary
 
 ## Adding components or bumping versions safely
 
 1. Edit `builder-config.yaml`.
-2. Run `make test` to test local modules.
-3. Run `make check` to regenerate the collector and compile the generated module.
+2. For new local receivers, add `metadata.yaml`, `doc.go`, receiver README, and generated metadata files.
+3. Run `make gogenerate`, `make check-metadata`, `make test`, and `make check`.
