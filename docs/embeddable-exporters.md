@@ -22,6 +22,7 @@ A good default layout looks like this:
 ├── config/
 │   └── config.go
 └── collectors/
+    └── runtime.go
     └── metrics.go
 ```
 
@@ -125,9 +126,9 @@ The `prometheus-opentelemetry-collector` repository wires these receivers into a
 
 ## Anti-patterns and Preferred Designs
 
-### CLI Flags as the Only Configuration API
+### Leaking CLI logic into downstream packages
 
-Avoid making package-level CLI flags the only way to configure exporter behavior. That couples the exporter logic to one binary entrypoint and forces downstream users to reimplement or reach into flag state.
+Avoid passing parsed CLI flags directly into Collector constructors. Build a Config struct and validate it before constructing the Collector.
 
 Bad:
 
@@ -167,9 +168,22 @@ func (c Config) Validate() error {
 The binary can still use flags, but flags should construct the reusable configuration.
 
 ```go
+var dataSourceNames = kingpin.Flag("data-source-name", "Postgres DSN").
+    Required().
+    Strings()
+
+_, err := kingpin.Parse(os.Args[1:])
+if err != nil {
+    return err
+}
+
 cfg := config.NewConfigWithDefaults()
 cfg.DataSourceNames = *dataSourceNames
-cfg.MetricPrefix = *metricPrefix
+if err := cfg.Validate(); err != nil {
+    return err
+}
+
+c := collectors.NewCollector(cfg)
 ```
 
 ### HTTP Handler as the Only Metrics Entrypoint
@@ -181,18 +195,55 @@ Bad:
 ```go
 func MetricsHandler(w http.ResponseWriter, r *http.Request) {
     registry := prometheus.NewRegistry()
-    registry.MustRegister(NewCollectorFromRequest(r))
+    registry.MustRegister(NewCollector(r))
     promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
 }
 ```
 
-This makes the HTTP handler the only reusable entrypoint. A collector receiver has to duplicate request handling or scrape the HTTP endpoint instead of gathering directly. The problem is not doing work during collection; that is normal for exporters such as Postgres. The problem is making `http.ResponseWriter` and `*http.Request` part of the reusable metrics API.
+Good:
 
-TODO: Add good examples for both long-lived registry exporters and request-triggered probe exporters once we settle on the recommended metrics package API shape.
+```go
+// package collectors
+type Runtime struct {
+    // exporter clients, config, logger, caches, etc.
+}
 
-### Global Prometheus Registration in Reusable Packages
+func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
+    // Resolve exporter dependencies here.
+}
 
-Avoid registering reusable package metrics with `promauto` or `prometheus.DefaultRegisterer`. Global registration makes multiple embedded instances collide and makes tests harder to isolate.
+func (r *Runtime) Collectors() ([]prometheus.Collector, error) {
+    // Build collectors from exporter config and dependencies.
+}
+
+// cmd/my_exporter
+func MetricsHandler(runtime *collectors.Runtime, logger *slog.Logger) (http.Handler, error) {
+    registry := prometheus.NewRegistry()
+
+    cs, err := runtime.Collectors()
+    if err != nil {
+        return nil, err
+    }
+    for _, c := range cs {
+        if err := registry.Register(c); err != nil {
+            return nil, err
+        }
+    }
+
+    opts := promhttp.HandlerOpts{
+        ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
+    }
+    return promhttp.HandlerFor(registry, opts), nil
+}
+```
+
+The bad example makes the HTTP handler the only reusable entrypoint. A collector receiver has to duplicate request handling or scrape the HTTP endpoint instead of gathering directly. The good example keeps collector construction in the reusable package and lets the binary adapt that collector set to HTTP with `promhttp.HandlerFor`.
+
+### Global and Package Variables
+
+Avoid declaring metrics as package variables and/or pre-registering them in the global `prometheus.DefaultRegisterer`. Remember that, while in the CLI there's only one instance of an exporter running, if the exporter is embedded as a Go library, it is very likely that multiple instances of the same exporter are running. Global and package variables create shared metric state and registration collisions in this case.
+
+Add a typed struct to your runtime, and create the metrics during Runtime initialization.
 
 Bad:
 
@@ -201,141 +252,69 @@ var reloads = promauto.NewCounter(prometheus.CounterOpts{
     Name: "exporter_config_reloads_total",
     Help: "Total number of config reloads.",
 })
+
+type Runtime struct{}
+
+func (r *Runtime) ReloadConfig() {
+    reloads.Inc()
+}
 ```
 
-Good:
+Bad:
 
 ```go
-type ReloadMetrics struct {
+type Runtime struct {
     reloads prometheus.Counter
 }
 
-func NewReloadMetrics(registerer prometheus.Registerer) (*ReloadMetrics, error) {
+func NewRuntime() *Runtime {
     reloads := prometheus.NewCounter(prometheus.CounterOpts{
         Name: "exporter_config_reloads_total",
         Help: "Total number of config reloads.",
     })
-    if err := registerer.Register(reloads); err != nil {
-        return nil, err
-    }
-    return &ReloadMetrics{reloads: reloads}, nil
-}
-```
-
-The standalone binary can pass `prometheus.DefaultRegisterer`. Embedded callers can pass a scoped registry.
-
-### Duplicated Collector and Exporter Config
-
-Avoid maintaining separate, manually mapped configuration models without drift tests. Every upstream config field that the receiver decodes manually becomes a chance for the exporter binary and the embedded receiver to behave differently.
-
-Bad:
-
-```go
-// In the exporter repository.
-type Config struct {
-    MetricPrefix string
-    Timeout      time.Duration
+    prometheus.MustRegister(reloads)
+    return &Runtime{reloads: reloads}
 }
 
-// In the collector receiver repository.
-type CollectorConfig struct {
-    MetricPrefix string `mapstructure:"metric_prefix"`
-}
-
-func decodeConfig(raw map[string]interface{}) (config.Config, error) {
-    cfg := config.NewConfigWithDefaults()
-    if value, ok := raw["metric_prefix"]; ok {
-        cfg.MetricPrefix = value.(string)
-    }
-    return cfg, nil
-}
-```
-
-This receiver silently forgets `Timeout`. The exporter can support a new config field while the collector receiver keeps ignoring it.
-
-The collector receiver may know how collector YAML maps into the upstream exporter config, but the exporter config package should not need OTel-specific fields, tags, or option metadata just to support that receiver.
-
-If the receiver must decode fields manually, keep a decoder table in the receiver module and add a reflection-based test that fails when the upstream exporter config changes without a matching receiver update.
-
-```go
-func TestConfigDecoderCoversAllExporterConfigFields(t *testing.T) {
-    configType := reflect.TypeOf(config.Config{})
-    for i := 0; i < configType.NumField(); i++ {
-        field := configType.Field(i)
-        if field.PkgPath != "" {
-            continue
-        }
-        if _, ok := configFieldDecoders[field.Name]; !ok {
-            t.Fatalf("exporter config field %s is not covered by the receiver decoder", field.Name)
-        }
-    }
-
-    for fieldName := range configFieldDecoders {
-        if _, ok := configType.FieldByName(fieldName); !ok {
-            t.Fatalf("receiver decoder covers unknown exporter config field %s", fieldName)
-        }
-    }
-}
-```
-
-### Standalone Binary Assumptions in Lifecycle
-
-Avoid creating independent loggers, relying on process-global state, or leaking resources. In a collector, the exporter is one component among many and should use caller-provided lifecycle inputs.
-
-Bad:
-
-```go
-func StartExporter(cfg config.Config) (*prometheus.Registry, error) {
-    logger := slog.Default()
-    registry := prometheus.NewRegistry()
-    registry.MustRegister(NewCollector(cfg, logger))
-    return registry, nil
-}
+runtimeA := NewRuntime()
+runtimeB := NewRuntime()
+// Two instances sharing the same prometheus.Registry.
 ```
 
 Good:
 
 ```go
-type lifecycleManager struct {
-    closer io.Closer
+type Runtime struct {
+    metrics *Metrics
 }
 
-func (m *lifecycleManager) Start(
-    _ context.Context,
-    set receiver.Settings,
-    exporterConfig prombridge.Config,
-) (*prometheus.Registry, error) {
-    cfg, ok := exporterConfig.(*Config)
-    if !ok {
-        return nil, fmt.Errorf("invalid config type: %T", exporterConfig)
-    }
-    logger := slog.New(zapslog.NewHandler(set.Logger.Core()))
-    registry, collectorSet, err := postgresmetrics.NewRegistry(cfg.Config, logger)
-    if err != nil {
-        return nil, err
-    }
-    m.closer = collectorSet
-    return registry, nil
+type Metrics struct {
+    reloads prometheus.Counter
 }
 
-func (m *lifecycleManager) Shutdown(context.Context) error {
-    if m.closer == nil {
-        return nil
-    }
-    return m.closer.Close()
+func NewRuntime() (*Runtime, error) {
+    return &Runtime{
+        metrics: newMetrics(),
+    }, nil
+}
+
+func newMetrics() *Metrics {
+    reloads := prometheus.NewCounter(prometheus.CounterOpts{
+        Name: "exporter_config_reloads_total",
+        Help: "Total number of config reloads.",
+    })
+    return &Metrics{reloads: reloads}
+}
+
+func (r *Runtime) Collectors() ([]prometheus.Collector, error) {
+    return []prometheus.Collector{
+        r.metrics.reloads,
+    }, nil
+}
+
+func (r *Runtime) ReloadConfig() {
+    r.metrics.reloads.Inc()
 }
 ```
 
-## Implementation Checklist
-
-When making an exporter embeddable, aim for this order:
-
-1. Move user-provided configuration into an exporter-owned config package.
-2. Keep CLI flags in the binary, but make them populate the config package.
-3. Move metric generation behind an API that returns a `prometheus.Gatherer`, returns a registry, or populates a caller-owned registry.
-4. Remove global registration from reusable packages, or accept a caller-provided registerer.
-5. Add drift tests for defaults, field names, and runtime mappings.
-6. Add a collector receiver module that adapts the exporter package through `opentelemetry-collector-bridge`.
-7. Add the receiver to `builder-config.yaml` and run the collector distribution build.
-
-Reference work includes Stackdriver config sharing, Postgres global metric registration cleanup, YACE standalone config and registry APIs, and the Stackdriver, YACE, and Postgres receiver modules in this repository.
+In `cmd/my_exporter`, one can register the collectors with `prometheus.DefaultRegisterer` or a fresh registry. Embedded callers can register the same collectors with a scoped registry.
