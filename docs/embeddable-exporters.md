@@ -174,6 +174,13 @@ var (
 func NewCollector() (*Collector, error) {
     return newCollector(*dataSourceName, *metricPrefix)
 }
+
+func newCollector(datasourceName, metricPrefix string) (*Collector, error) {
+    if c.MetricPrefix == "" {
+        return fmt.Errorf("metric prefix must not be empty")
+    }
+    // rest of the code
+}
 ```
 
 Good:
@@ -291,6 +298,11 @@ type Runtime struct{}
 func (r *Runtime) ReloadConfig() {
     reloads.Inc()
 }
+runtimeA := NewRuntime()
+runtimeB := NewRuntime()
+runtimeA.ReloadConfig()
+runtimeB.ReloadConfig()
+// Two instances incrementing the same metric.
 ```
 
 Bad:
