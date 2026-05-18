@@ -9,8 +9,8 @@ The exporter does not need to be rewritten as an OpenTelemetry component. Instea
 An embeddable exporter separates three responsibilities:
 
 - `cmd/my_exporter`: CLI flags, environment variables, HTTP server setup, `/metrics`, web configuration, and process-level logging.
-- `config`: user-facing configuration, defaults, validation, and conversion to lower-level runtime options.
-- `metrics`: metric generation through a Prometheus registry or gatherer, without assuming HTTP.
+- `config`: User-facing configuration, defaults, validation, and conversion to lower-level runtime options.
+- `collectors`: Implementation of Prometheus client_golang's Collector interface, while receiving an instance of Config for customization.
 
 A good default layout looks like this:
 
@@ -21,11 +21,11 @@ A good default layout looks like this:
 │       └── main.go
 ├── config/
 │   └── config.go
-└── metrics/
-    └── registry.go
+└── collectors/
+    └── metrics.go
 ```
 
-Reusable packages should not depend on binary-specific or collector-specific concerns. Keep CLI flags, HTTP handlers, environment parsing, mapstructure metadata, and OpenTelemetry receiver settings outside `config` and `metrics`.
+Of course, the layout don't need to be exactly the same as above, but the example shows the intended separation of concerns. For the Prometheus exporter implementation, the `cmd/my_exporter` package will be responsible for wiring the config and the collectors package with other parts of the system, like kingpin flags, environment variable parsing, serving metrics in a `/metrics` endpoints, etc. In this repository, or any repository, which implements the OpenTelemetry Collector interfaces, the Config and Collectors packages can be consumed without getting interference from the exporter's CLI logic.
 
 ### Config Package Contract
 
@@ -63,7 +63,7 @@ func NewConfigWithDefaults() Config {
 }
 ```
 
-Finally, the config package must validate constructed configs. The command package should not be the only place that knows what valid configuration means.
+Finally, the config package must validate constructed configs.
 
 ```go
 package config
@@ -84,20 +84,18 @@ func (c Config) Validate() error {
 }
 ```
 
-With this shape, the command package becomes a thin adapter from CLI flags into `config.Config`.
+With this shape, the command package becomes a thin adapter from CLI flags into `config.Config`. Similarly, the OTel Collector implementation can stay in sync with the exporter for config creation and validation.
 
 ```go
 cfg := config.NewConfigWithDefaults()
-cfg.DataSourceName = *dataSourceName
-cfg.MetricPrefix = *metricPrefix
-cfg.CollectionTimeout = *collectionTimeout
+cfg.DataSourceName = *dataSourceName // *dataSourceName can come from kingpin, YAML decoding or any other config strategy.
 
 if err := cfg.Validate(); err != nil {
     return err
 }
 ```
 
-### Metrics Package Contract
+### Collectors Package Contract
 
 The metrics package must provide an API that generates metrics from `config.Config`. In `client_golang`, a `prometheus.Registry` implements `prometheus.Registerer`, `prometheus.Gatherer`, and `prometheus.Collector`. `promhttp.HandlerFor` accepts a `prometheus.Gatherer`, so callers do not always need an API that only registers collectors. They need an API that gives them something gatherable, or an API that lets them populate a gatherable registry they already own.
 
