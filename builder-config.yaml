@@ -38,4 +38,3 @@ telemetry:
 
 replaces:
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver => ../receivers/stackdriver
-  - github.com/prometheus-community/stackdriver_exporter => github.com/kgeckhart/stackdriver_exporter v0.18.1-0.20260513190947-00b90d3a0ad3
