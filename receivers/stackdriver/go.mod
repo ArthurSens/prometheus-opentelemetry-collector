@@ -2,11 +2,9 @@ module github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackd
 
 go 1.25.0
 
-replace github.com/prometheus-community/stackdriver_exporter => github.com/kgeckhart/stackdriver_exporter v0.18.1-0.20260513190947-00b90d3a0ad3
-
 require (
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/prometheus-community/stackdriver_exporter v0.18.1-0.20260423183840-730b0083f2bc
+	github.com/prometheus-community/stackdriver_exporter v0.18.1-0.20260527145757-ff409e69749b
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260512202517-5008f6fde161
 	github.com/stretchr/testify v1.11.1
