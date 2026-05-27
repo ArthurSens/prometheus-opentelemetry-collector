@@ -98,6 +98,49 @@ if err := cfg.Validate(); err != nil {
 }
 ```
 
+### Runtime Requires Validated Config
+
+Runtime constructors should not silently assume that a config has gone through the exporter's validation path. Let `Validate()` mark successful validation and have `NewRuntime` fail clearly when that mark is missing.
+
+```go
+package config
+
+type Config struct {
+    MetricPrefix string
+
+    validated bool
+}
+
+func (c *Config) Validate() error {
+    if c.MetricPrefix == "" {
+        return fmt.Errorf("metric prefix must not be empty")
+    }
+
+    c.validated = true
+    return nil
+}
+
+func (c *Config) Validated() bool {
+    return c.validated
+}
+```
+
+```go
+package collectors
+
+func NewRuntime(cfg *config.Config, logger *slog.Logger) (*Runtime, error) {
+    if !cfg.Validated() {
+        return nil, fmt.Errorf("config has not been validated; call cfg.Validate before NewRuntime")
+        // optionally a panic would also work since this is clearly a bug.
+    }
+
+    // Resolve exporter dependencies here.
+}
+```
+
+If using this pattern, `Validate()` should be a pointer method, set the marker only after all checks pass, and `NewRuntime` should return a clear error telling callers to call `Validate()` first. Keep the marker private; expose only a narrow `Validated()` method if another package needs to check it.
+
+This marker is a lifecycle guard, not an immutability guarantee. If exported config fields can be mutated after validation, callers can still invalidate the config.
 ### Collectors Package Contract
 
 The Collectors package must have a Struct and corresponding constructor that represents a single instance of that exporter. While the traditional exporter CLI runs only one instance, when embedded, several instances of the same exporter might run as part of the same binary.
