@@ -18,90 +18,53 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"time"
 
 	"github.com/prometheus-community/stackdriver_exporter/collectors"
 	"github.com/prometheus-community/stackdriver_exporter/config"
 	"github.com/prometheus-community/stackdriver_exporter/delta"
-	"github.com/prometheus-community/stackdriver_exporter/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap/exp/zapslog"
-	"google.golang.org/api/monitoring/v3"
 )
 
-type collectorFactoryFunc func(projectID string, service *monitoring.Service, opts collectors.MonitoringCollectorOptions, deltasTTL time.Duration, logger *slog.Logger) (prometheus.Collector, error)
+var _ prombridge.ExporterLifecycleManager = (*lifecycleManager)(nil)
 
 type lifecycleManager struct {
-	monitoringServiceFactory func(ctx context.Context, cfg config.RuntimeConfig) (*monitoring.Service, error)
-	collectorFactory         collectorFactoryFunc
-	filterProjectDiscoverer  func(ctx context.Context, filter string) ([]string, error)
-	defaultProjectDiscoverer func(ctx context.Context) (string, error)
-	loggerForSettings        func(set receiver.Settings) *slog.Logger
+	loggerFromSettings func(set receiver.Settings) *slog.Logger
 }
 
 func newLifecycleManager() *lifecycleManager {
-	return &lifecycleManager{
-		monitoringServiceFactory: func(ctx context.Context, cfg config.RuntimeConfig) (*monitoring.Service, error) {
-			return cfg.CreateMonitoringService(ctx)
-		},
-		collectorFactory: func(projectID string, service *monitoring.Service, opts collectors.MonitoringCollectorOptions, deltasTTL time.Duration, logger *slog.Logger) (prometheus.Collector, error) {
-			return collectors.NewMonitoringCollector(
-				projectID,
-				service,
-				opts,
-				logger,
-				delta.NewInMemoryCounterStore(logger, deltasTTL),
-				delta.NewInMemoryHistogramStore(logger, deltasTTL),
-			)
-		},
-		filterProjectDiscoverer:  utils.GetProjectIDsFromFilter,
-		defaultProjectDiscoverer: config.DiscoverDefaultProjectID,
-		loggerForSettings:        collectorSlogLogger,
-	}
+	return &lifecycleManager{loggerFromSettings: collectorSlogLogger}
 }
 
-func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterConfig prombridge.Config) (*prometheus.Registry, error) {
-	cfg, ok := exporterConfig.(*Config)
+func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
+	cfg, ok := exporterCfg.(*config.Config)
 	if !ok {
-		return nil, fmt.Errorf("invalid exporter config type: %T", exporterConfig)
+		return nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
 	}
 
-	runtimeCfg, err := cfg.runtimeConfig()
+	logger := m.loggerFromSettings(set)
+	runtime, err := collectors.NewRuntime(ctx, logger, cfg, delta.NewInMemoryCounterStore, delta.NewInMemoryHistogramStore)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("start stackdriver runtime: %w", err)
 	}
 
-	projectIDs, err := m.resolveProjectIDs(ctx, cfg)
+	collectorList, err := runtime.Collectors()
 	if err != nil {
-		return nil, err
-	}
-
-	monitoringService, err := m.monitoringServiceFactory(ctx, runtimeCfg)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build collectors: %w", err)
 	}
 
 	registry := prometheus.NewRegistry()
-	logger := m.loggerForSettings(set)
-
-	for _, projectID := range projectIDs {
-		collector, err := m.collectorFactory(projectID, monitoringService, runtimeCfg.MonitoringCollectorOptions(), runtimeCfg.DeltasTTL, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create collector for project %q: %w", projectID, err)
-		}
-		if err := registry.Register(collector); err != nil {
-			return nil, fmt.Errorf("failed to register collector for project %q: %w", projectID, err)
+	for _, c := range collectorList {
+		if err := registry.Register(c); err != nil {
+			return nil, fmt.Errorf("register collector: %w", err)
 		}
 	}
-
 	return registry, nil
 }
 
-func (m *lifecycleManager) Shutdown(context.Context) error {
-	return nil
-}
+func (m *lifecycleManager) Shutdown(context.Context) error { return nil }
 
 func collectorSlogLogger(set receiver.Settings) *slog.Logger {
 	if set.Logger == nil {
@@ -109,28 +72,4 @@ func collectorSlogLogger(set receiver.Settings) *slog.Logger {
 	}
 
 	return slog.New(zapslog.NewHandler(set.Logger.Core()))
-}
-
-func (m *lifecycleManager) resolveProjectIDs(ctx context.Context, cfg *Config) ([]string, error) {
-	var projectIDs []string
-
-	if cfg.ProjectsFilter != "" {
-		ids, err := m.filterProjectDiscoverer(ctx, cfg.ProjectsFilter)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve project IDs from projects_filter: %w", err)
-		}
-		projectIDs = append(projectIDs, ids...)
-	}
-
-	projectIDs = append(projectIDs, cfg.ProjectIDs...)
-
-	if len(projectIDs) == 0 {
-		projectID, err := m.defaultProjectDiscoverer(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to discover default GCP project: %w", err)
-		}
-		projectIDs = append(projectIDs, projectID)
-	}
-
-	return config.DeduplicateProjectIDs(projectIDs), nil
 }

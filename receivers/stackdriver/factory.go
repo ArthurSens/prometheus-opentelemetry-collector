@@ -22,16 +22,10 @@ import (
 var receiverType = component.MustNewType("stackdriver_exporter")
 
 func NewFactory() receiver.Factory {
-	return prombridge.NewFactory(
+	return prombridge.NewFactoryWithDecoder(
 		receiverType,
 		newLifecycleManager(),
-		configUnmarshaler{},
-		prombridge.WithComponentDefaults(defaultComponentDefaults()),
+		configDecoder{},
+		prombridge.WithComponentDefaults(componentDefaults()),
 	)
 }
-
-// Keep compiler checks close to factory wiring.
-var (
-	_ prombridge.ExporterLifecycleManager = (*lifecycleManager)(nil)
-	_ prombridge.ConfigUnmarshaler        = (configUnmarshaler{})
-)
