@@ -1,0 +1,21 @@
+display_name: Stackdriver Receiver
+type: stackdriver_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives Google Cloud Monitoring metrics by running the Prometheus
+  [stackdriver_exporter](https://github.com/prometheus-community/stackdriver_exporter)
+  as an OpenTelemetry Collector receiver.
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens, kgeckhart]
+
+tests:
+  skip_lifecycle: true
+  skip_shutdown: true

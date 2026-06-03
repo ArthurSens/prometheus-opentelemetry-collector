@@ -9,9 +9,11 @@ require (
 	github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260512202517-5008f6fde161
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.58.0
+	go.opentelemetry.io/collector/component/componenttest v0.152.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.152.0
 	go.opentelemetry.io/collector/receiver v1.58.0
 	go.opentelemetry.io/collector/receiver/receivertest v0.152.0
+	go.uber.org/goleak v1.3.0
 	go.uber.org/zap/exp v0.3.0
 )
 
@@ -41,7 +43,6 @@ require (
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector/component/componenttest v0.152.0 // indirect
 	go.opentelemetry.io/collector/consumer v1.58.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.152.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.152.0 // indirect
