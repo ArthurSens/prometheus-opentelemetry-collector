@@ -14,6 +14,7 @@
 package stackdriver
 
 import (
+	"github.com/go-viper/mapstructure/v2"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
@@ -22,10 +23,10 @@ import (
 var receiverType = component.MustNewType("stackdriver_exporter")
 
 func NewFactory() receiver.Factory {
-	return prombridge.NewFactoryWithDecoder(
+	return prombridge.NewFactoryWithUntaggedConfig(
 		receiverType,
 		newLifecycleManager(),
-		configDecoder{},
-		prombridge.WithComponentDefaults(componentDefaults()),
+		configUnmarshaler{},
+		prombridge.WithDecodeHooks(mapstructure.StringToTimeDurationHookFunc()),
 	)
 }
