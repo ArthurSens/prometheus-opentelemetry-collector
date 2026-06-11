@@ -6,7 +6,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/prometheus-community/stackdriver_exporter v0.19.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260609123117-2bc02249594a
+	github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260611155921-57dafe79e37a
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.60.0
 	go.opentelemetry.io/collector/component/componenttest v0.154.0
@@ -76,5 +76,3 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/prometheus/opentelemetry-collector-bridge => github.com/kgeckhart/opentelemetry-collector-bridge v0.0.0-20260610203221-9699ea930d0a
