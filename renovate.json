@@ -63,6 +63,15 @@
         "/^github\\.com\\/prometheus-community\\/stackdriver_exporter/"
       ],
       "groupName": "stackdriver exporter modules"
+    },
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "/^github\\.com\\/prometheus-community\\/yet-another-cloudwatch-exporter/"
+      ],
+      "groupName": "YACE exporter modules"
     }
   ]
 }
