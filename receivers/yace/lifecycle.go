@@ -61,7 +61,7 @@ func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, expor
 		return nil, fmt.Errorf("create YACE client factory: %w", err)
 	}
 
-	scraper, err := metrics.NewScraper(logger, *cfg, jobsCfg, factory, scrapeMetrics)
+	scraper, err := metrics.NewScraper(logger, scrapeMetrics, *cfg, jobsCfg, factory)
 	if err != nil {
 		return nil, fmt.Errorf("create YACE scraper: %w", err)
 	}
