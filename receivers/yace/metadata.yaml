@@ -14,7 +14,7 @@ status:
     development: [metrics]
   distributions: [prometheus]
   codeowners:
-    active: [ArthurSens]
+    active: [ArthurSens, tristanburguess, andriikushch]
 
 tests:
   skip_lifecycle: true
