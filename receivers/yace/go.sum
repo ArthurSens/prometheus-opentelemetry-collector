@@ -111,6 +111,8 @@ github.com/prometheus/common v0.67.5 h1:pIgK94WWlQt1WLwAC5j2ynLaBRDiinoAb86HZHTU
 github.com/prometheus/common v0.67.5/go.mod h1:SjE/0MzDEEAyrdr5Gqc6G+sXI67maCxzaT3A2+HqjUw=
 github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260611155921-57dafe79e37a h1:NbFwgKVnQwiHI0xdpx07r4UZhAG4isde23HA/W4VqKo=
 github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260611155921-57dafe79e37a/go.mod h1:+ci6Kh1BbAOJZIUnGdAeXDQZ0a7BFr2pP+iOS6SeBJU=
+github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260623121837-ed12d6387431 h1:OjnYiwvXqVSJbooO/f7xT2mhg1fTOzlD4CWRrWAn8mg=
+github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260623121837-ed12d6387431/go.mod h1:+ci6Kh1BbAOJZIUnGdAeXDQZ0a7BFr2pP+iOS6SeBJU=
 github.com/prometheus/procfs v0.20.1 h1:XwbrGOIplXW/AU3YhIhLODXMJYyC1isLFfYCsTEycfc=
 github.com/prometheus/procfs v0.20.1/go.mod h1:o9EMBZGRyvDrSPH1RqdxhojkuXstoe4UlK79eF5TGGo=
 github.com/r3labs/diff/v3 v3.0.1 h1:CBKqf3XmNRHXKmdU7mZP1w7TV0pDyVCis1AUHtA4Xtg=
