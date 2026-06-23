@@ -25,6 +25,16 @@
       ],
       "depNameTemplate": "go.opentelemetry.io/collector/cmd/builder",
       "datasourceTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)builder-config\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\r\\n|\\r|\\n)telemetry:\\s+gomod:\\s+(?<depName>\\S+)\\s+(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "go"
     }
   ],
   "packageRules": [
@@ -39,6 +49,14 @@
         "/^github\\.com\\/open-telemetry\\/opentelemetry-collector-contrib\\//"
       ],
       "groupName": "OpenTelemetry Collector modules"
+    },
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "postUpdateOptions": [
+        "gomodTidy"
+      ]
     },
     {
       "matchManagers": [
