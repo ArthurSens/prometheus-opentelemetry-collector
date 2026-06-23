@@ -35,19 +35,10 @@
         "custom.regex"
       ],
       "matchDepNames": [
-        "/^go\\.opentelemetry\\.io\\/collector\\//"
-      ],
-      "groupName": "OpenTelemetry Collector modules"
-    },
-    {
-      "matchManagers": [
-        "ocb",
-        "gomod"
-      ],
-      "matchDepNames": [
+        "/^go\\.opentelemetry\\.io\\/collector\\//",
         "/^github\\.com\\/open-telemetry\\/opentelemetry-collector-contrib\\//"
       ],
-      "groupName": "OpenTelemetry Collector contrib modules"
+      "groupName": "OpenTelemetry Collector modules"
     },
     {
       "matchManagers": [
