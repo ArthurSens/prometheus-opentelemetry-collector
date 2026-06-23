@@ -5,7 +5,7 @@ go 1.25.8
 require (
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.1-0.20260616222548-3929599d95d2
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260611155921-57dafe79e37a
+	github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260623121837-ed12d6387431
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.60.0
 	go.opentelemetry.io/collector/component/componenttest v0.154.0
