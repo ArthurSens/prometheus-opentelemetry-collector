@@ -3,27 +3,18 @@
   "extends": [
     "config:recommended"
   ],
-  "enabledManagers": [
-    "custom.regex"
-  ],
   "dependencyDashboard": true,
   "prHourlyLimit": 1,
   "prConcurrentLimit": 3,
   "schedule": [
     "before 6am on monday"
   ],
+  "ocb": {
+    "managerFilePatterns": [
+      "/(^|/)builder-config\\.ya?ml$/"
+    ]
+  },
   "customManagers": [
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/(^|/)builder-config\\.yaml$/"
-      ],
-      "matchStrings": [
-        "(?:^|\\r\\n|\\r|\\n)\\s*-?\\s*gomod:\\s+(?<depName>\\S+)\\s+(?<currentValue>\\S+)",
-        "(?:^|\\r\\n|\\r|\\n)\\s*-\\s*\\S+\\s*=>\\s*(?<depName>\\S+)\\s+(?<currentValue>\\S+)"
-      ],
-      "datasourceTemplate": "go"
-    },
     {
       "customType": "regex",
       "managerFilePatterns": [
@@ -39,6 +30,8 @@
   "packageRules": [
     {
       "matchManagers": [
+        "ocb",
+        "gomod",
         "custom.regex"
       ],
       "matchDepNames": [
@@ -48,7 +41,8 @@
     },
     {
       "matchManagers": [
-        "custom.regex"
+        "ocb",
+        "gomod"
       ],
       "matchDepNames": [
         "/^github\\.com\\/open-telemetry\\/opentelemetry-collector-contrib\\//"
@@ -57,7 +51,7 @@
     },
     {
       "matchManagers": [
-        "custom.regex"
+        "gomod"
       ],
       "matchDepNames": [
         "/^github\\.com\\/prometheus-community\\/stackdriver_exporter/"
@@ -66,7 +60,7 @@
     },
     {
       "matchManagers": [
-        "custom.regex"
+        "gomod"
       ],
       "matchDepNames": [
         "/^github\\.com\\/prometheus-community\\/yet-another-cloudwatch-exporter/"
