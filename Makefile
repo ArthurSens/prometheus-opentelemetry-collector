@@ -1,7 +1,7 @@
 .PHONY: generate-distribution gogenerate mdatagen check-metadata build test check clean
 
 GOCMD ?= go
-OCB_VERSION ?= v0.151.0
+OCB_VERSION ?= v0.155.0
 SRC_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 MANIFEST := $(SRC_ROOT)/builder-config.yaml
 BUILD_DIR := $(SRC_ROOT)/_build
