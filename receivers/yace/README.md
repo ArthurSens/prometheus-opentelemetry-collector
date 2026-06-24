@@ -5,7 +5,6 @@ Receives AWS CloudWatch metrics by running the Prometheus
 [yet-another-cloudwatch-exporter](https://github.com/prometheus-community/yet-another-cloudwatch-exporter)
 as an OpenTelemetry Collector receiver.
 
-
 | Status        |           |
 | ------------- |-----------|
 | Stability     | [development]: metrics   |

@@ -5,7 +5,6 @@ Receives Google Cloud Monitoring metrics by running the Prometheus
 [stackdriver_exporter](https://github.com/prometheus-community/stackdriver_exporter)
 as an OpenTelemetry Collector receiver.
 
-
 | Status        |           |
 | ------------- |-----------|
 | Stability     | [development]: metrics   |
