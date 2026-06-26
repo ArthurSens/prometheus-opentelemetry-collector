@@ -43,7 +43,9 @@ receivers:
 | `fips_enabled` | Use FIPS AWS endpoints. |
 
 `scrape_config_file` takes a standard YACE config — the same format the
-standalone exporter's `--config.file` accepts:
+standalone exporter's `--config.file` accepts. See YACE's
+[configuration docs](https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/master/docs/configuration.md)
+for the full schema (discovery/static jobs, regions, roles, tags); a minimal example:
 
 ```yaml
 # yace-config.yaml
