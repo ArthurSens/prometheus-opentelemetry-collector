@@ -1,0 +1,6 @@
+change_type: new_component
+component: receiver/stackdriver
+note: Add the Stackdriver receiver for collecting Google Cloud Monitoring metrics through the embedded stackdriver_exporter.
+issues: [6]
+subtext:
+change_logs: []

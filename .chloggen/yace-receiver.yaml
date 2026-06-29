@@ -1,0 +1,6 @@
+change_type: new_component
+component: receiver/yace
+note: Add the YACE receiver for collecting AWS CloudWatch metrics through the embedded yet-another-cloudwatch-exporter.
+issues: [10]
+subtext:
+change_logs: []
