@@ -1,0 +1,92 @@
+name: Automation - Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        description: Release version with leading v, for example v0.1.0
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-release:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.4"
+
+      - name: Prepare release pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
+            echo "version must be a semantic version with a leading v, for example v0.1.0"
+            exit 1
+          fi
+
+          BRANCH="prepare-release-prs/${VERSION}"
+          git switch -c "${BRANCH}"
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          path = Path("versions.yaml")
+          lines = path.read_text().splitlines()
+
+          in_receivers = False
+          updated = False
+          for idx, line in enumerate(lines):
+              if line == "  receivers:":
+                  in_receivers = True
+                  continue
+              if in_receivers and line.startswith("  ") and not line.startswith("    "):
+                  break
+              if in_receivers and line.startswith("    version:"):
+                  lines[idx] = f"    version: {version}"
+                  updated = True
+                  break
+
+          if not updated:
+              raise SystemExit("could not find module-sets.receivers.version in versions.yaml")
+
+          path.write_text("\n".join(lines) + "\n")
+          PY
+
+          make chlog-update VERSION="${VERSION}"
+          make chlog-validate
+          make multimod-verify
+
+          git add versions.yaml CHANGELOG.md .chloggen
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "[chore] Prepare release ${VERSION}"
+          git push --set-upstream origin "${BRANCH}"
+
+          gh pr create \
+            --head "${BRANCH}" \
+            --title "[chore] Prepare release ${VERSION}" \
+            --body "$(cat <<EOF
+          Prepares release ${VERSION}.
+
+          This workflow ran:
+          - make chlog-update VERSION=${VERSION}
+          - make chlog-validate
+          - make multimod-verify
+          EOF
+          )"
