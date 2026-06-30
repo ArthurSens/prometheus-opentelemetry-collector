@@ -59,7 +59,7 @@ chlog-preview:
 
 chlog-update:
 	@test -n "$(VERSION)" || (echo "VERSION is required. Usage: make chlog-update VERSION=v0.1.0" && exit 1)
-	cd "$(SRC_ROOT)" && "$(CHLOGGEN)" --config "$(CHLOGGEN_CONFIG)" update -version "$(VERSION)"
+	cd "$(SRC_ROOT)" && "$(CHLOGGEN)" --config "$(CHLOGGEN_CONFIG)" update --version "$(VERSION)"
 
 clean:
 	rm -rf "$(BUILD_DIR)" "$(SRC_ROOT)/.bin"
