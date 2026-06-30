@@ -2,7 +2,10 @@ module github.com/prometheus/prometheus-opentelemetry-collector/internal/tools
 
 go 1.25.0
 
-tool go.opentelemetry.io/collector/cmd/mdatagen
+tool (
+	go.opentelemetry.io/build-tools/chloggen
+	go.opentelemetry.io/collector/cmd/mdatagen
+)
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -18,8 +21,10 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	go.opentelemetry.io/build-tools/chloggen v0.30.0 // indirect
 	go.opentelemetry.io/collector/cmd/mdatagen v0.155.0 // indirect
 	go.opentelemetry.io/collector/component v1.61.0 // indirect
 	go.opentelemetry.io/collector/confmap v1.61.0 // indirect
@@ -38,4 +43,5 @@ require (
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/tools v0.46.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

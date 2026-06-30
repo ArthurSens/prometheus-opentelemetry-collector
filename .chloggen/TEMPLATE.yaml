@@ -1,0 +1,20 @@
+# Use this changelog template for user-visible changes.
+
+# One of: breaking, deprecation, new_component, enhancement, bug_fix.
+change_type:
+
+# One of the components listed in .chloggen/config.yaml.
+component:
+
+# A brief release-note sentence. Surround the text with quotes if it starts with
+# a backtick (`) or contains YAML-sensitive characters.
+note:
+
+# One or more tracking issue or pull request numbers.
+issues: []
+
+# Optional additional markdown rendered under the primary note.
+subtext:
+
+# Optional changelog list. Defaults to [user].
+change_logs: []
